@@ -11,6 +11,11 @@ DATA_PATH = "data/raw"
 def json2message_list(channel_messages: dict) -> List[Dict]:
     message_list = []
     for msg in channel_messages['messages']:
+        # message filtering
+
+        if msg['content'] == "":
+            continue
+
         message_list.append({
             'content': msg['content'],
             'id': msg['id'],
