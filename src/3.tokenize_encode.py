@@ -35,9 +35,9 @@ def encode_dataset(message_pairs, tokenizer) -> np.array:
         decoder_inputs.append(" ".join(["[BOS]", pair[1]]))
         decoder_outputs.append(" ".join([pair[1], "[EOS]"]))
 
-    encoded_encoder_inputs = np.array([encoding.ids for encoding in tokenizer.encode_batch(encoder_inputs)])
-    encoded_decoder_inputs = np.array([encoding.ids for encoding in tokenizer.encode_batch(decoder_inputs)])
-    encoded_decoder_outputs = np.array([encoding.ids for encoding in tokenizer.encode_batch(decoder_outputs)])
+    encoded_encoder_inputs = np.expand_dims(np.array([encoding.ids for encoding in tokenizer.encode_batch(encoder_inputs)]), axis=-1)
+    encoded_decoder_inputs = np.expand_dims(np.array([encoding.ids for encoding in tokenizer.encode_batch(decoder_inputs)]), axis=-1)
+    encoded_decoder_outputs = np.expand_dims(np.array([encoding.ids for encoding in tokenizer.encode_batch(decoder_outputs)]), axis=-1)
 
     return encoded_encoder_inputs, encoded_decoder_inputs, encoded_decoder_outputs
 
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
     dataset = encode_dataset(msg_pairs, learned_tokenizer)
 
-    with open("data/encoder_input", 'wb') as fd:
+    with open("data/encoder_inputs", 'wb') as fd:
         pickle.dump(dataset[0], fd)
 
     with open("data/decoder_inputs", 'wb') as fd:
