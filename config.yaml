@@ -1,0 +1,14 @@
+Pairs:
+  data_path: 'data/raw'
+  max_time_delta: 30
+Vocab:
+  size: 1000
+  max_seq_length: 32
+Model:
+  embedding_size: 200
+  cell_size: 64
+Training:
+  epochs: 5
+  batch_size: 16
+Evaluation:
+  run_name: 'latest'

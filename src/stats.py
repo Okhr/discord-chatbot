@@ -2,7 +2,7 @@ import json
 import os
 from pprint import pprint as pp
 
-DATA_PATH = "data/raw"
+DATA_PATH = "../data/raw"
 
 
 def count_messages_per_channel(data_path):

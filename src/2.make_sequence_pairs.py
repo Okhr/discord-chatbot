@@ -1,8 +1,7 @@
 import json
+import yaml
 from pprint import pp
 from typing import List, Dict, Tuple
-
-MAX_TIME_DELTA = 30
 
 
 def message_lists2message_pairs(message_lists: List[List[Dict]], max_time_delta: int) -> List[Tuple]:
@@ -31,10 +30,14 @@ def message_lists2message_pairs(message_lists: List[List[Dict]], max_time_delta:
 
 
 if __name__ == '__main__':
+
+    with open('config.yaml') as f:
+        params = yaml.load(f.read(), Loader=yaml.CLoader)
+
     with open('data/messages_by_channel.json', 'r') as fd:
         msg_lists = json.load(fd)
 
-    msg_pairs = message_lists2message_pairs(msg_lists, MAX_TIME_DELTA)
+    msg_pairs = message_lists2message_pairs(msg_lists, params['Pairs']['max_time_delta'])
 
     with open('data/message_pairs.json', 'w') as fd:
         json.dump(msg_pairs, fd, indent=4, ensure_ascii=False)

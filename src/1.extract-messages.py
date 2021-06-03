@@ -1,11 +1,10 @@
 import datetime
 import json
+import yaml
 import os
 import time
 from pprint import pp
 from typing import List, Tuple, Dict
-
-DATA_PATH = "data/raw"
 
 
 def json2message_list(channel_messages: dict) -> List[Dict]:
@@ -28,10 +27,13 @@ def json2message_list(channel_messages: dict) -> List[Dict]:
 
 if __name__ == '__main__':
 
+    with open('config.yaml') as f:
+        params = yaml.load(f.read(), Loader=yaml.CLoader)
+
     messages_by_channel = []
 
-    for channel_path in os.listdir(DATA_PATH):
-        with open(os.path.join(DATA_PATH, channel_path)) as fd:
+    for channel_path in os.listdir(params['Pairs']['data_path']):
+        with open(os.path.join(params['Pairs']['data_path'], channel_path)) as fd:
             message_dict = json.load(fd)
             msg_list = json2message_list(message_dict)
             messages_by_channel.append(msg_list)

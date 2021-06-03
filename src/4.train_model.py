@@ -1,43 +1,39 @@
+import os
 import pickle
 import time
+import yaml
 
 from tensorflow import keras
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Dense, LSTM, Embedding, TimeDistributed
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 
-VOCAB_SIZE = 5000
-MAX_SEQ_LENGTH = 128
-EMBEDDING_SIZE = 200
-CELL_SIZE = 128
 
-BATCH_SIZE = 32
+def build_model(vocab_size, sequence_size, cell_size):
+    encoder_inputs = Input(shape=(sequence_size, vocab_size), name="encoder_inputs")
+    _, state_h, state_c = LSTM(cell_size, return_state=True, name="encoder_lstm")(encoder_inputs)
 
-RUN_NAME = f"VOCAB{VOCAB_SIZE}-SEQ{MAX_SEQ_LENGTH}-EMBEDDING{EMBEDDING_SIZE}-CELL{CELL_SIZE}-BS{BATCH_SIZE}-" + str(
-    int(time.time()))
+    decoder_inputs = Input(shape=(sequence_size, vocab_size), name="decoder_inputs")
+    decoder_outputs, _, _ = LSTM(cell_size, return_sequences=True, return_state=True, name="decoder_lstm")(
+        decoder_inputs, initial_state=[state_h, state_c])
 
-
-def build_model(vocab_size, embedding_size, sequence_size, cell_size):
-    encoder_inputs = Input(shape=(sequence_size,))
-    encoder_embeddings = Embedding(input_dim=vocab_size, output_dim=embedding_size, input_length=sequence_size)(
-        encoder_inputs)
-    _, state_h, state_c = LSTM(cell_size, return_state=True)(encoder_embeddings)
-
-    decoder_inputs = Input(shape=(sequence_size,))
-    decoders_embeddings = Embedding(input_dim=vocab_size, output_dim=embedding_size, input_length=sequence_size)(
-        decoder_inputs)
-    decoder_outputs = LSTM(cell_size, return_sequences=True)(decoders_embeddings, initial_state=[state_h, state_c])
-
-    outputs = TimeDistributed(Dense(vocab_size, activation='softmax'))(decoder_outputs)
+    outputs = Dense(vocab_size, activation='softmax', name="dense")(decoder_outputs)
     model = Model([encoder_inputs, decoder_inputs], outputs)
 
     opt = keras.optimizers.RMSprop(learning_rate=0.001)
-    model.compile(opt, loss=keras.losses.sparse_categorical_crossentropy, metrics=['acc'])
+    model.compile(opt, loss=keras.losses.categorical_crossentropy, metrics=['acc'])
+
+    print(model.summary())
+    # keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=True)
 
     return model
 
 
 if __name__ == '__main__':
+
+    with open('config.yaml') as f:
+        params = yaml.load(f.read(), Loader=yaml.CLoader)
+
     with open('data/encoder_inputs', 'rb') as fd:
         enc_inputs = pickle.load(fd)
 
@@ -51,9 +47,13 @@ if __name__ == '__main__':
     print(f"Decoder inputs shape : {dec_inputs.shape}")
     print(f"Decoder outputs shape : {dec_outputs.shape}")
 
-    full_model = build_model(VOCAB_SIZE, EMBEDDING_SIZE, MAX_SEQ_LENGTH, CELL_SIZE)
+    RUN_NAME = f"VOCAB{params['Vocab']['size']}-SEQ{params['Vocab']['max_seq_length']}-EMBEDDING{params['Model']['embedding_size']}-CELL{params['Model']['cell_size']}-BS{params['Training']['batch_size']}-" + str(int(time.time()))
+
+    full_model = build_model(params['Vocab']['size'], params['Vocab']['max_seq_length'], params['Model']['cell_size'])
 
     # callbacks
+    if not os.path.exists(f"models/{RUN_NAME}"):
+        os.makedirs(f"models/{RUN_NAME}")
     tensorboard = TensorBoard(log_dir="logs/" + RUN_NAME,
                               histogram_freq=1,
                               write_graph=True,
@@ -64,7 +64,7 @@ if __name__ == '__main__':
                                        save_best_only=True,
                                        save_weights_only=False,
                                        mode="max",
-                                       verbose=0)
+                                       verbose=1)
     reduce_lr_on_plateau = ReduceLROnPlateau(monitor="val_acc",
                                              factor=0.6,
                                              patience=5,
@@ -74,5 +74,11 @@ if __name__ == '__main__':
                                    patience=8,
                                    verbose=0)
 
-    full_model.fit([enc_inputs, dec_inputs], dec_outputs, batch_size=BATCH_SIZE, epochs=5, validation_split=0.2,
+    full_model.fit([enc_inputs, dec_inputs],
+                   dec_outputs,
+                   batch_size=params['Training']['batch_size'],
+                   epochs=params['Training']['epochs'],
+                   validation_split=0.2,
                    callbacks=[tensorboard, model_checkpoint, reduce_lr_on_plateau, early_stopping])
+
+    full_model.save(f"models/{RUN_NAME}/final-model.hdf5")
