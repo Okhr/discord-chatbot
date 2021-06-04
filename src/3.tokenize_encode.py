@@ -40,23 +40,11 @@ def encode_dataset(message_pairs, tokenizer, vocab_size) -> np.array:
         decoder_inputs.append(" ".join(["[BOS]", pair[1]]))
         decoder_outputs.append(" ".join([pair[1], "[EOS]"]))
 
-    encoded_encoder_inputs = keras.utils.to_categorical(
-        np.array([encoding.ids for encoding in tokenizer.encode_batch(encoder_inputs)]),
-        num_classes=vocab_size,
-        dtype='uint8'
-    )
+    encoded_encoder_inputs = np.array([encoding.ids for encoding in tokenizer.encode_batch(encoder_inputs)])
 
-    encoded_decoder_inputs = keras.utils.to_categorical(
-        np.array([encoding.ids for encoding in tokenizer.encode_batch(decoder_inputs)]),
-        num_classes=vocab_size,
-        dtype='uint8'
-    )
+    encoded_decoder_inputs = np.array([encoding.ids for encoding in tokenizer.encode_batch(decoder_inputs)])
 
-    encoded_decoder_outputs = keras.utils.to_categorical(
-        np.array([encoding.ids for encoding in tokenizer.encode_batch(decoder_outputs)]),
-        num_classes=vocab_size,
-        dtype='uint8'
-    )
+    encoded_decoder_outputs = np.array([encoding.ids for encoding in tokenizer.encode_batch(decoder_outputs)])
 
     return encoded_encoder_inputs, encoded_decoder_inputs, encoded_decoder_outputs
 

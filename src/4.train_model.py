@@ -9,19 +9,23 @@ from tensorflow.keras.layers import Dense, LSTM, Embedding, TimeDistributed
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 
 
-def build_model(vocab_size, sequence_size, cell_size):
-    encoder_inputs = Input(shape=(sequence_size, vocab_size), name="encoder_inputs")
-    _, state_h, state_c = LSTM(cell_size, return_state=True, name="encoder_lstm")(encoder_inputs)
+def build_model(vocab_size, sequence_size, embedding_size, cell_size):
+    encoder_inputs = Input(shape=(sequence_size,), name="encoder_inputs")
+    encoder_embeddings = Embedding(input_dim=vocab_size, output_dim=embedding_size, input_length=sequence_size,
+                                   name="encoder_embeddings")(encoder_inputs)
+    _, state_h, state_c = LSTM(cell_size, return_state=True, name="encoder_lstm")(encoder_embeddings)
 
-    decoder_inputs = Input(shape=(sequence_size, vocab_size), name="decoder_inputs")
+    decoder_inputs = Input(shape=(sequence_size,), name="decoder_inputs")
+    decoder_embeddings = Embedding(input_dim=vocab_size, output_dim=embedding_size, input_length=sequence_size,
+                                   name="decoder_embeddings")(decoder_inputs)
     decoder_outputs, _, _ = LSTM(cell_size, return_sequences=True, return_state=True, name="decoder_lstm")(
-        decoder_inputs, initial_state=[state_h, state_c])
+        decoder_embeddings, initial_state=[state_h, state_c])
 
     outputs = Dense(vocab_size, activation='softmax', name="dense")(decoder_outputs)
     model = Model([encoder_inputs, decoder_inputs], outputs)
 
     opt = keras.optimizers.RMSprop(learning_rate=0.001)
-    model.compile(opt, loss=keras.losses.categorical_crossentropy, metrics=['acc'])
+    model.compile(opt, loss=keras.losses.sparse_categorical_crossentropy, metrics=['acc'])
 
     print(model.summary())
     # keras.utils.plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=True)
@@ -47,9 +51,11 @@ if __name__ == '__main__':
     print(f"Decoder inputs shape : {dec_inputs.shape}")
     print(f"Decoder outputs shape : {dec_outputs.shape}")
 
-    RUN_NAME = f"VOCAB{params['Vocab']['size']}-SEQ{params['Vocab']['max_seq_length']}-EMBEDDING{params['Model']['embedding_size']}-CELL{params['Model']['cell_size']}-BS{params['Training']['batch_size']}-" + str(int(time.time()))
+    RUN_NAME = f"VOCAB{params['Vocab']['size']}-SEQ{params['Vocab']['max_seq_length']}-EMBEDDING{params['Model']['embedding_size']}-CELL{params['Model']['cell_size']}-BS{params['Training']['batch_size']}-" + str(
+        int(time.time()))
 
-    full_model = build_model(params['Vocab']['size'], params['Vocab']['max_seq_length'], params['Model']['cell_size'])
+    full_model = build_model(params['Vocab']['size'], params['Vocab']['max_seq_length'],
+                             params['Model']['embedding_size'], params['Model']['cell_size'])
 
     # callbacks
     if not os.path.exists(f"models/{RUN_NAME}"):
